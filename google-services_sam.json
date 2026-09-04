@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "956828166633",
+    "project_id": "sam-zone-393aa",
+    "storage_bucket": "sam-zone-393aa.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:956828166633:android:5bb19581d98821fa97c378",
+        "android_client_info": {
+          "package_name": "com.samowner.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCedDsAhiT24o3kAv8nivGo7GPhQ7MnZO8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
