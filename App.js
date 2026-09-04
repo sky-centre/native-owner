@@ -1,33 +1,55 @@
 import { useEffect, useState } from "react";
-import { SafeAreaView, StatusBar, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView, StatusBar, StyleSheet, View, ActivityIndicator } from "react-native";
 import { supabase } from "./lib/supabase";
+import { getOwnerSession } from "./lib/auth";
+import PinLogin from "./components/PinLogin";
+import OwnerHome from "./components/OwnerHome";
 
 export default function App() {
-  const [status, setStatus] = useState("Menghubungkan ke backend...");
+  const [checking, setChecking] = useState(true);
+  const [isOwner, setIsOwner] = useState(false);
 
   useEffect(() => {
-    supabase
-      .from("conversations")
-      .select("id", { count: "exact", head: true })
-      .then(({ error }) => {
-        setStatus(error ? `Gagal konek: ${error.message}` : "Terhubung ke backend ✅");
+    let mounted = true;
+
+    getOwnerSession().then((ok) => {
+      if (mounted) {
+        setIsOwner(ok);
+        setChecking(false);
+      }
+    });
+
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange(() => {
+      getOwnerSession().then((ok) => {
+        if (mounted) setIsOwner(ok);
       });
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
-      <View style={styles.content}>
-        <Text style={styles.title}>Sam Zone — Owner</Text>
-        <Text style={styles.status}>{status}</Text>
-      </View>
+      {checking ? (
+        <View style={styles.center}>
+          <ActivityIndicator color="#2f7de1" />
+        </View>
+      ) : isOwner ? (
+        <OwnerHome onLoggedOut={() => setIsOwner(false)} />
+      ) : (
+        <PinLogin onSuccess={() => setIsOwner(true)} />
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#0b0b0f" },
-  content: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
-  title: { color: "#fff", fontSize: 22, fontWeight: "700" },
-  status: { color: "#9a9aa5", fontSize: 14 }
+  center: { flex: 1, alignItems: "center", justifyContent: "center" }
 });
