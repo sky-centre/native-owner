@@ -3,7 +3,8 @@ import { SafeAreaView, StatusBar, StyleSheet, View, ActivityIndicator } from "re
 import { supabase } from "./lib/supabase";
 import { getOwnerSession } from "./lib/auth";
 import PinLogin from "./components/PinLogin";
-import OwnerHome from "./components/OwnerHome";
+import RootNavigator from "./navigation/RootNavigator";
+import { colors } from "./lib/theme";
 
 export default function App() {
   const [checking, setChecking] = useState(true);
@@ -38,10 +39,10 @@ export default function App() {
       <StatusBar barStyle="light-content" />
       {checking ? (
         <View style={styles.center}>
-          <ActivityIndicator color="#2f7de1" />
+          <ActivityIndicator color={colors.accent} />
         </View>
       ) : isOwner ? (
-        <OwnerHome onLoggedOut={() => setIsOwner(false)} />
+        <RootNavigator onLoggedOut={() => setIsOwner(false)} />
       ) : (
         <PinLogin onSuccess={() => setIsOwner(true)} />
       )}
@@ -50,6 +51,6 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0b0b0f" },
+  container: { flex: 1, backgroundColor: colors.bg },
   center: { flex: 1, alignItems: "center", justifyContent: "center" }
 });
