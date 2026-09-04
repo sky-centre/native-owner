@@ -33,6 +33,12 @@ export default {
           icon: "./assets/notification-icon.png",
           color: "#0b0b0f"
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          photosPermission: "Izinkan Sam Zone Owner mengakses galeri untuk memilih foto profil."
+        }
       ]
     ],
     extra: {
