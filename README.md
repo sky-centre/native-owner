@@ -33,6 +33,23 @@ Repo ini tidak butuh terminal lokal sama sekali:
 - Progress build bisa dipantau di tab Actions atau di expo.dev
 - Hasil `.apk` / `.aab` bisa didownload dari expo.dev setelah build selesai
 
+## EAS Update (OTA) — hemat limit build
+
+Setelah build native pertama berhasil terinstall di device, perubahan **JS/logic/asset** (bukan native config)
+tidak perlu build ulang lagi. Cukup pakai **EAS Update**:
+
+- **Otomatis**: setiap push ke branch `main` akan trigger workflow `eas-update.yml` → publish ke channel `preview`
+- **Manual**: tab Actions → workflow **"EAS Update (OTA)"** → Run workflow → pilih channel
+
+App yang sudah terinstall akan otomatis mengambil update ini saat dibuka ulang — **tanpa perlu install ulang APK**.
+
+**Kapan tetap butuh build native ulang (bukan cukup update):**
+- Menambah/mengganti native module (misal package baru yang punya kode native)
+- Mengubah `app.config.js` bagian native (package name, permissions, icon, splash)
+- Upgrade versi Expo SDK
+
+Selama cuma ubah tampilan, logic, atau teks — cukup `eas update`, tidak perlu buang limit build.
+
 ## Struktur
 
 - `app.config.js` — konfigurasi Expo (package name, plugin, EAS project id)
