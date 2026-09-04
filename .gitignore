@@ -1,0 +1,11 @@
+node_modules/
+.expo/
+dist/
+web-build/
+*.log
+.DS_Store
+
+# rahasia — JANGAN pernah commit
+*firebase-adminsdk*.json
+.env
+.env.local
