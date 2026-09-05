@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { SafeAreaView, StatusBar, StyleSheet, View, ActivityIndicator } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { supabase } from "./lib/supabase";
 import { getOwnerSession } from "./lib/auth";
 import { registerOwnerPushToken, addNotificationTapListener } from "./lib/notifications";
@@ -70,18 +71,20 @@ export default function App() {
   }, []);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      {checking ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={colors.accent} />
-        </View>
-      ) : isOwner ? (
-        <RootNavigator onLoggedOut={() => setIsOwner(false)} />
-      ) : (
-        <PinLogin onSuccess={() => setIsOwner(true)} />
-      )}
-    </SafeAreaView>
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="light-content" />
+        {checking ? (
+          <View style={styles.center}>
+            <ActivityIndicator color={colors.accent} />
+          </View>
+        ) : isOwner ? (
+          <RootNavigator onLoggedOut={() => setIsOwner(false)} />
+        ) : (
+          <PinLogin onSuccess={() => setIsOwner(true)} />
+        )}
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
