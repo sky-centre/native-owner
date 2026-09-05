@@ -120,6 +120,81 @@ export default function ConversationsListScreen({ navigation }) {
     ]);
   };
 
+  // --- RESET CHAT: hapus semua pesan, conversation tetap ada, di kedua sisi ---
+  const resetChat = async (conversationId) => {
+    setActingOn(conversationId);
+    const { error } = await supabase
+      .from("messages")
+      .delete()
+      .eq("conversation_id", conversationId);
+    setActingOn(null);
+
+    if (error) {
+      Alert.alert("Gagal", error.message);
+      return;
+    }
+    fetchConversations();
+  };
+
+  // --- HAPUS PERMANEN: hapus conversation, messages ikut terhapus (FK cascade), di kedua sisi ---
+  const deleteConversation = async (conversationId) => {
+    setActingOn(conversationId);
+    const previous = conversations;
+    setConversations((prev) => prev.filter((c) => c.id !== conversationId));
+
+    const { error } = await supabase
+      .from("conversations")
+      .delete()
+      .eq("id", conversationId);
+
+    setActingOn(null);
+
+    if (error) {
+      setConversations(previous);
+      Alert.alert("Gagal", error.message);
+    }
+  };
+
+  const handleLongPressCard = (conv, nama) => {
+    Alert.alert(
+      nama,
+      "Pilih tindakan untuk percakapan ini",
+      [
+        { text: "Batal", style: "cancel" },
+        {
+          text: "Reset Chat",
+          onPress: () =>
+            Alert.alert(
+              "Reset chat?",
+              `Semua pesan dengan ${nama} akan dihapus di kedua sisi, tapi percakapan tetap ada.`,
+              [
+                { text: "Batal", style: "cancel" },
+                { text: "Reset", onPress: () => resetChat(conv.id) }
+              ]
+            ),
+        },
+        {
+          text: "Hapus Permanen",
+          style: "destructive",
+          onPress: () =>
+            Alert.alert(
+              "Hapus percakapan?",
+              `Percakapan dan seluruh riwayat chat dengan ${nama} akan dihapus permanen di kedua sisi. Tindakan ini tidak bisa dibatalkan.`,
+              [
+                { text: "Batal", style: "cancel" },
+                {
+                  text: "Hapus",
+                  style: "destructive",
+                  onPress: () => deleteConversation(conv.id)
+                }
+              ]
+            ),
+        }
+      ],
+      { cancelable: true }
+    );
+  };
+
   const pending = conversations.filter((c) => c.status === "PENDING");
   const active = conversations.filter((c) => c.status === "APPROVED");
   const history = conversations.filter((c) => c.status === "REJECTED" || c.status === "CLOSED");
@@ -175,6 +250,8 @@ export default function ConversationsListScreen({ navigation }) {
                       navigation.navigate("Chat", { conversationId: conv.id, visitorNama: nama });
                     }
                   }}
+                  onLongPress={() => handleLongPressCard(conv, nama)}
+                  delayLongPress={350}
                 >
                   <View style={styles.cardTop}>
                     <Text style={styles.visitorName}>{nama}</Text>
@@ -202,6 +279,12 @@ export default function ConversationsListScreen({ navigation }) {
                       <Text style={styles.codeText}>kode: {conv.access_code_used}</Text>
                     )}
                   </View>
+
+                  {actingOn === conv.id && (
+                    <View style={styles.actingOverlay}>
+                      <ActivityIndicator size="small" color={colors.accent} />
+                    </View>
+                  )}
 
                   {isPending && (
                     <View style={styles.actionRow}>
@@ -281,5 +364,10 @@ const styles = StyleSheet.create({
   rejectBtn: { backgroundColor: colors.dangerSoft, borderWidth: 1, borderColor: colors.danger },
   approveBtn: { backgroundColor: colors.accent },
   rejectText: { color: colors.danger, fontWeight: "700", fontSize: 13 },
-  approveText: { color: colors.bg, fontWeight: "700", fontSize: 13 }
+  approveText: { color: colors.bg, fontWeight: "700", fontSize: 13 },
+  actingOverlay: {
+    position: "absolute",
+    top: spacing.lg,
+    right: spacing.lg
+  }
 });
