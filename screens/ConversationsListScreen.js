@@ -88,16 +88,28 @@ export default function ConversationsListScreen({ navigation }) {
 
   const respond = async (conversationId, status) => {
     setActingOn(conversationId);
+
+    // Optimistic update: UI langsung pindah kartu ke section yang benar tanpa
+    // menunggu round-trip network. Realtime subscription tetap jalan sebagai
+    // pengaman konsistensi (mis. kalau ada perubahan dari device lain).
+    const previous = conversations;
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === conversationId ? { ...c, status, updated_at: new Date().toISOString() } : c
+      )
+    );
+
     const { error } = await supabase
       .from("conversations")
       .update({ status, updated_at: new Date().toISOString() })
       .eq("id", conversationId);
+
     setActingOn(null);
 
     if (error) {
+      // Gagal -> rollback ke state sebelumnya dan kasih tahu.
+      setConversations(previous);
       Alert.alert("Gagal", error.message);
-    } else {
-      fetchConversations();
     }
   };
 
