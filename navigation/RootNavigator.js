@@ -1,4 +1,4 @@
-import { NavigationContainer, DarkTheme } from "@react-navigation/native";
+import { NavigationContainer, DarkTheme, createNavigationContainerRef } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Text } from "react-native";
@@ -48,13 +48,25 @@ function ConversationsStackNavigator() {
   );
 }
 
+// Ref navigasi global, dipakai App.js untuk pindah ke layar Chat saat
+// owner mengetuk notifikasi push (mis. NEW_KNOCK / NEW_MESSAGE).
+export const navigationRef = createNavigationContainerRef();
+
+export function navigateToConversation(conversationId, visitorNama) {
+  if (!navigationRef.isReady() || !conversationId) return;
+  navigationRef.navigate("PercakapanTab", {
+    screen: "Chat",
+    params: { conversationId, visitorNama: visitorNama || "" }
+  });
+}
+
 function TabIcon({ emoji, focused }) {
   return <Text style={{ fontSize: 18, opacity: focused ? 1 : 0.5 }}>{emoji}</Text>;
 }
 
 export default function RootNavigator({ onLoggedOut }) {
   return (
-    <NavigationContainer theme={navTheme}>
+    <NavigationContainer ref={navigationRef} theme={navTheme}>
       <Tab.Navigator
         screenOptions={{
           headerShown: false,
