@@ -12,6 +12,8 @@ import {
   Alert
 } from "react-native";
 import { useIsFocused } from "@react-navigation/native";
+import { useHeaderHeight } from "@react-navigation/elements";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../lib/supabase";
 import { useOwner } from "../lib/useOwner";
@@ -38,8 +40,8 @@ function formatDateLabel(iso) {
   const yesterday = new Date();
   yesterday.setDate(today.getDate() - 1);
 
-  if (dateKey(iso) === dateKey(today.toISOString())) return "Hari ini";
-  if (dateKey(iso) === dateKey(yesterday.toISOString())) return "Kemarin";
+  if (dateKey(iso) === dateKey(today)) return "Hari ini";
+  if (dateKey(iso) === dateKey(yesterday)) return "Kemarin";
   return d.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
 }
 
@@ -51,7 +53,7 @@ function initials(name) {
 // Ceklis ala WhatsApp: 1 abu = terkirim, 2 abu = diterima, 2 biru-terang = dibaca.
 function MessageTicks({ deliveredAt, readAt }) {
   if (readAt) {
-    return <Ionicons name="checkmark-done" size={15} color="#8ad6ff" />;
+    return <Ionicons name="checkmark-done" size={15} color={colors.readTick || "#8ad6ff"} />;
   }
   if (deliveredAt) {
     return <Ionicons name="checkmark-done" size={15} color="rgba(255,255,255,0.55)" />;
@@ -63,12 +65,15 @@ export default function ChatScreen({ route, navigation }) {
   const { conversationId, visitorNama } = route.params;
   const { ownerId } = useOwner();
   const isFocused = useIsFocused();
+  const headerHeight = useHeaderHeight();
+  const insets = useSafeAreaInsets();
   const [messages, setMessages] = useState([]);
   const [conversation, setConversation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [showKeperluan, setShowKeperluan] = useState(true);
+  const [inputFocused, setInputFocused] = useState(false);
   const listRef = useRef(null);
 
   const fetchConversation = useCallback(async () => {
@@ -147,6 +152,7 @@ export default function ChatScreen({ route, navigation }) {
               );
             }}
             style={styles.headerAction}
+            accessibilityLabel="Tutup percakapan"
           >
             <Ionicons name="close-circle-outline" size={22} color={colors.muted} />
           </TouchableOpacity>
@@ -262,8 +268,8 @@ export default function ChatScreen({ route, navigation }) {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? headerHeight : 0}
     >
       {!!conversation?.keperluan && showKeperluan && (
         <View style={styles.keperluanBanner}>
@@ -271,7 +277,7 @@ export default function ChatScreen({ route, navigation }) {
           <Text style={styles.keperluanText} numberOfLines={2}>
             {conversation.keperluan}
           </Text>
-          <TouchableOpacity onPress={() => setShowKeperluan(false)} hitSlop={8}>
+          <TouchableOpacity onPress={() => setShowKeperluan(false)} hitSlop={8} accessibilityLabel="Tutup info keperluan">
             <Ionicons name="close" size={16} color={colors.muted} />
           </TouchableOpacity>
         </View>
@@ -325,26 +331,32 @@ export default function ChatScreen({ route, navigation }) {
       />
 
       {closed ? (
-        <View style={styles.closedBanner}>
+        <View style={[styles.closedBanner, { paddingBottom: spacing.md + insets.bottom }]}>
           <Ionicons name="lock-closed-outline" size={14} color={colors.muted} />
           <Text style={styles.closedBannerText}>
             {conversation?.status === "CLOSED" ? "Percakapan ini sudah ditutup." : "Percakapan ini ditolak."}
           </Text>
         </View>
       ) : (
-        <View style={styles.inputRow}>
-          <TextInput
-            style={styles.input}
-            placeholder="Tulis pesan..."
-            placeholderTextColor={colors.muted}
-            value={text}
-            onChangeText={setText}
-            multiline
-          />
+        <View style={[styles.inputBar, { paddingBottom: spacing.md + insets.bottom }]}>
+          <View style={[styles.inputCard, inputFocused && styles.inputCardFocused]}>
+            <TextInput
+              style={styles.input}
+              placeholder="Tulis pesan..."
+              placeholderTextColor={colors.muted}
+              value={text}
+              onChangeText={setText}
+              onFocus={() => setInputFocused(true)}
+              onBlur={() => setInputFocused(false)}
+              multiline
+              accessibilityLabel="Tulis pesan"
+            />
+          </View>
           <TouchableOpacity
             style={[styles.sendBtn, !text.trim() && styles.sendBtnDisabled]}
             onPress={send}
             disabled={!text.trim() || sending}
+            accessibilityLabel="Kirim pesan"
           >
             {sending ? (
               <ActivityIndicator size="small" color={colors.bg} />
@@ -449,41 +461,64 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    paddingVertical: spacing.md,
+    paddingTop: spacing.md,
+    paddingHorizontal: spacing.lg,
     borderTopWidth: 1,
     borderTopColor: colors.border,
     backgroundColor: colors.bg
   },
   closedBannerText: { color: colors.muted, fontSize: 12.5 },
 
-  inputRow: {
+  inputBar: {
     flexDirection: "row",
     alignItems: "flex-end",
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
     gap: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
     backgroundColor: colors.bg
   },
-  input: {
+  inputCard: {
     flex: 1,
     backgroundColor: colors.card,
-    borderWidth: 1,
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
     borderColor: colors.border,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm + 4,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2
+  },
+  inputCardFocused: {
+    borderColor: colors.accent,
+    shadowColor: colors.accent,
+    shadowOpacity: 0.18,
+    shadowRadius: 8
+  },
+  input: {
     color: colors.text,
     maxHeight: 120,
-    fontSize: 15
+    fontSize: 15,
+    paddingVertical: 6
   },
   sendBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     backgroundColor: colors.accent,
     alignItems: "center",
-    justifyContent: "center"
+    justifyContent: "center",
+    shadowColor: colors.accent,
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4
   },
-  sendBtnDisabled: { opacity: 0.4 }
+  sendBtnDisabled: {
+    backgroundColor: colors.border,
+    shadowOpacity: 0,
+    elevation: 0
+  }
 });
