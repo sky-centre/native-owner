@@ -10,6 +10,7 @@ import {
   Platform,
   ActivityIndicator
 } from "react-native";
+import { useIsFocused } from "@react-navigation/native";
 import { supabase } from "../lib/supabase";
 import { useOwner } from "../lib/useOwner";
 import { colors, spacing, radius } from "../lib/theme";
@@ -19,9 +20,22 @@ function formatTime(iso) {
   return d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
 }
 
+// Centang ala WhatsApp untuk pesan milik owner sendiri:
+// belum terkirim -> 1 centang abu, delivered -> 2 centang abu, dibaca -> 2 centang biru.
+function MessageTicks({ deliveredAt, readAt }) {
+  if (readAt) {
+    return <Text style={[styles.ticks, styles.ticksRead]}>✓✓</Text>;
+  }
+  if (deliveredAt) {
+    return <Text style={styles.ticks}>✓✓</Text>;
+  }
+  return <Text style={styles.ticks}>✓</Text>;
+}
+
 export default function ChatScreen({ route, navigation }) {
   const { conversationId, visitorNama } = route.params;
   const { ownerId } = useOwner();
+  const isFocused = useIsFocused();
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState("");
@@ -35,7 +49,7 @@ export default function ChatScreen({ route, navigation }) {
   const fetchMessages = useCallback(async () => {
     const { data, error } = await supabase
       .from("messages")
-      .select("id, conversation_id, sender_id, isi_pesan, status_baca, created_at")
+      .select("id, conversation_id, sender_id, isi_pesan, status_baca, delivered_at, read_at, created_at")
       .eq("conversation_id", conversationId)
       .order("created_at", { ascending: true });
 
@@ -49,7 +63,7 @@ export default function ChatScreen({ route, navigation }) {
     fetchMessages();
   }, [fetchMessages]);
 
-  // Realtime: pesan baru masuk di percakapan ini
+  // Realtime: pesan baru masuk & perubahan status (delivered/read) di percakapan ini.
   useEffect(() => {
     const channel = supabase
       .channel(`chat-${conversationId}`)
@@ -68,6 +82,18 @@ export default function ChatScreen({ route, navigation }) {
           });
         }
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "messages",
+          filter: `conversation_id=eq.${conversationId}`
+        },
+        (payload) => {
+          setMessages((prev) => prev.map((m) => (m.id === payload.new.id ? payload.new : m)));
+        }
+      )
       .subscribe();
 
     return () => {
@@ -75,17 +101,38 @@ export default function ChatScreen({ route, navigation }) {
     };
   }, [conversationId]);
 
-  // Tandai pesan visitor sebagai sudah dibaca saat chat dibuka
+  // Tandai pesan visitor sebagai "delivered" begitu masuk ke device owner
+  // (terlepas dari layar chat sedang dibuka atau tidak).
   useEffect(() => {
     if (!ownerId) return;
+    const undelivered = messages.filter((m) => m.sender_id !== ownerId && !m.delivered_at);
+    if (undelivered.length === 0) return;
+
     supabase
       .from("messages")
-      .update({ status_baca: true })
-      .eq("conversation_id", conversationId)
-      .neq("sender_id", ownerId)
-      .eq("status_baca", false)
+      .update({ delivered_at: new Date().toISOString() })
+      .in(
+        "id",
+        undelivered.map((m) => m.id)
+      )
       .then(() => {});
-  }, [conversationId, ownerId, messages.length]);
+  }, [messages, ownerId]);
+
+  // Tandai pesan visitor sebagai "read" hanya saat layar chat ini sedang aktif dilihat.
+  useEffect(() => {
+    if (!ownerId || !isFocused) return;
+    const unread = messages.filter((m) => m.sender_id !== ownerId && !m.read_at);
+    if (unread.length === 0) return;
+
+    supabase
+      .from("messages")
+      .update({ read_at: new Date().toISOString() })
+      .in(
+        "id",
+        unread.map((m) => m.id)
+      )
+      .then(() => {});
+  }, [conversationId, ownerId, messages, isFocused]);
 
   const send = async () => {
     const isi = text.trim();
@@ -137,9 +184,12 @@ export default function ChatScreen({ route, navigation }) {
                 <Text style={mine ? styles.bubbleTextMine : styles.bubbleTextTheirs}>
                   {item.isi_pesan}
                 </Text>
-                <Text style={[styles.bubbleTime, mine && styles.bubbleTimeMine]}>
-                  {formatTime(item.created_at)}
-                </Text>
+                <View style={styles.bubbleFooter}>
+                  <Text style={[styles.bubbleTime, mine && styles.bubbleTimeMine]}>
+                    {formatTime(item.created_at)}
+                  </Text>
+                  {mine && <MessageTicks deliveredAt={item.delivered_at} readAt={item.read_at} />}
+                </View>
               </View>
             </View>
           );
@@ -194,8 +244,17 @@ const styles = StyleSheet.create({
   },
   bubbleTextMine: { color: "#fff", fontSize: 14 },
   bubbleTextTheirs: { color: colors.text, fontSize: 14 },
-  bubbleTime: { color: colors.muted, fontSize: 10, marginTop: 4, alignSelf: "flex-end" },
+  bubbleFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-end",
+    marginTop: 4,
+    gap: 4
+  },
+  bubbleTime: { color: colors.muted, fontSize: 10 },
   bubbleTimeMine: { color: "rgba(255,255,255,0.7)" },
+  ticks: { fontSize: 12, color: "rgba(255,255,255,0.7)", fontWeight: "700" },
+  ticksRead: { color: "#7fd7ff" },
   inputRow: {
     flexDirection: "row",
     alignItems: "flex-end",
