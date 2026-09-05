@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { SafeAreaView, StatusBar, StyleSheet, View, ActivityIndicator } from "react-native";
 import { supabase } from "./lib/supabase";
 import { getOwnerSession } from "./lib/auth";
+import { registerOwnerPushToken, addNotificationTapListener } from "./lib/notifications";
 import PinLogin from "./components/PinLogin";
-import RootNavigator from "./navigation/RootNavigator";
+import RootNavigator, { navigateToConversation } from "./navigation/RootNavigator";
 import { colors } from "./lib/theme";
 
 export default function App() {
@@ -32,6 +33,40 @@ export default function App() {
       mounted = false;
       subscription.unsubscribe();
     };
+  }, []);
+
+  // Setelah owner terverifikasi, daftarkan push token perangkat ini ke tabel
+  // `devices` supaya backend bisa mengirim notif saat ada ketukan pintu / pesan baru.
+  useEffect(() => {
+    if (!isOwner) return;
+    let mounted = true;
+
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session || !mounted) return;
+      const { data: userRow } = await supabase
+        .from("users")
+        .select("id")
+        .eq("auth_id", session.user.id)
+        .eq("role", "OWNER")
+        .maybeSingle();
+
+      if (mounted && userRow?.id) {
+        registerOwnerPushToken(userRow.id);
+      }
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, [isOwner]);
+
+  // Saat owner mengetuk notifikasi (app di background/mati), langsung buka
+  // percakapan terkait.
+  useEffect(() => {
+    const unsubscribe = addNotificationTapListener(({ conversationId }) => {
+      navigateToConversation(conversationId);
+    });
+    return unsubscribe;
   }, []);
 
   return (
