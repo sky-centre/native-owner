@@ -43,7 +43,9 @@ jobs:
         run: npm install --legacy-peer-deps
 
       - name: Ensure required Expo packages are installed
-        run: npx expo install react-native-safe-area-context --non-interactive
+        run: npx expo install react-native-safe-area-context
+        env:
+          CI: 1
 
       - name: Commit updated package.json / lock file (if changed)
         run: |
