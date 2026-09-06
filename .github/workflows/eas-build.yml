@@ -43,7 +43,7 @@ jobs:
         run: npm install --legacy-peer-deps
 
       - name: Ensure required Expo packages are installed
-        run: npx expo install react-native-safe-area-context
+        run: npx expo install react-native-safe-area-context @expo/vector-icons
         env:
           CI: 1
 
@@ -54,7 +54,7 @@ jobs:
           git add package.json package-lock.json
 
           if ! git diff --cached --quiet; then
-            git commit -m "chore: add react-native-safe-area-context [skip ci]"
+            git commit -m "chore: add react-native-safe-area-context and @expo/vector-icons [skip ci]"
             git push
           else
             echo "Dependencies already up to date."
