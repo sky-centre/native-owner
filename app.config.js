@@ -27,6 +27,7 @@ export default {
       }
     },
     plugins: [
+      "expo-font",
       [
         "expo-notifications",
         {
