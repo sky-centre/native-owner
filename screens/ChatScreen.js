@@ -7,6 +7,7 @@ import {
   TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
+  Keyboard,
   Platform,
   ActivityIndicator,
   Alert
@@ -74,7 +75,19 @@ export default function ChatScreen({ route, navigation }) {
   const [sending, setSending] = useState(false);
   const [showKeperluan, setShowKeperluan] = useState(true);
   const [inputFocused, setInputFocused] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const listRef = useRef(null);
+
+  useEffect(() => {
+    const showEvt = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvt = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showSub = Keyboard.addListener(showEvt, () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener(hideEvt, () => setKeyboardVisible(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const fetchConversation = useCallback(async () => {
     const { data } = await supabase
@@ -338,14 +351,14 @@ export default function ChatScreen({ route, navigation }) {
       />
 
       {closed ? (
-        <View style={[styles.closedBanner, { paddingBottom: spacing.md + insets.bottom }]}>
+        <View style={[styles.closedBanner, { paddingBottom: spacing.md + (keyboardVisible ? 0 : insets.bottom) }]}>
           <Ionicons name="lock-closed-outline" size={14} color={colors.muted} />
           <Text style={styles.closedBannerText}>
             {conversation?.status === "CLOSED" ? "Percakapan ini sudah ditutup." : "Percakapan ini ditolak."}
           </Text>
         </View>
       ) : (
-        <View style={[styles.inputBar, { paddingBottom: spacing.md + insets.bottom }]}>
+        <View style={[styles.inputBar, { paddingBottom: spacing.md + (keyboardVisible ? 0 : insets.bottom) }]}>
           <View style={[styles.inputCard, inputFocused && styles.inputCardFocused]}>
             <TextInput
               style={styles.input}
