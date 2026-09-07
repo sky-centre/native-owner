@@ -109,6 +109,13 @@ export default function ChatScreen({ route, navigation }) {
     const meta = STATUS_META[status];
 
     navigation.setOptions({
+      headerStyle: {
+        backgroundColor: colors.bg,
+        borderBottomWidth: 1.5,
+        borderBottomColor: colors.accent,
+        elevation: 0,
+        shadowOpacity: 0
+      },
       headerTitle: () => (
         <View style={styles.headerTitleWrap}>
           <View style={styles.headerAvatar}>
@@ -268,7 +275,7 @@ export default function ChatScreen({ route, navigation }) {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? headerHeight : 0}
     >
       {!!conversation?.keperluan && showKeperluan && (
